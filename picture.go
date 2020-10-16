@@ -478,6 +478,32 @@ func (f *File) GetPicture(sheet, cell string) (string, []byte, error) {
 	return f.getPicture(row, col, drawingXML, drawingRelationships)
 }
 
+func (f *File) GetPictures(sheet, cell string) ([]*ImageData, error) {
+	col, row, err := CellNameToCoordinates(cell)
+	if err != nil {
+		return nil, err
+	}
+	col--
+	row--
+	xlsx, err := f.workSheetReader(sheet)
+	if err != nil {
+		return nil, err
+	}
+	if xlsx.Drawing == nil {
+		return nil, err
+	}
+	target := f.getSheetRelationshipsTargetByID(sheet, xlsx.Drawing.RID)
+	drawingXML := strings.Replace(target, "..", "xl", -1)
+	_, ok := f.XLSX[drawingXML]
+	if !ok {
+		return nil, err
+	}
+	drawingRelationships := strings.Replace(
+		strings.Replace(target, "../drawings", "xl/drawings/_rels", -1), ".xml", ".xml.rels", -1)
+
+	return f.getPictures(row, col, drawingXML, drawingRelationships)
+}
+
 // DeletePicture provides a function to delete charts in spreadsheet by given
 // worksheet and cell name. Note that the image file won't be deleted from the
 // document currently.
@@ -534,6 +560,58 @@ func (f *File) getPicture(row, col int, drawingXML, drawingRelationships string)
 				if _, ok = supportImageTypes[filepath.Ext(drawRel.Target)]; ok {
 					ret, buf = filepath.Base(drawRel.Target), f.XLSX[strings.Replace(drawRel.Target, "..", "xl", -1)]
 					return
+				}
+			}
+		}
+	}
+	return
+}
+
+type ImageData struct {
+	Name string
+	Data []byte
+}
+
+func (f *File) getPictures(row, col int, drawingXML, drawingRelationships string) (images []*ImageData, err error) {
+	var (
+		wsDr            *xlsxWsDr
+		ok              bool
+		deWsDr          *decodeWsDr
+		drawRel         *xlsxRelationship
+		deTwoCellAnchor *decodeTwoCellAnchor
+	)
+	images = []*ImageData{}
+	var ret string
+	var buf []byte
+	wsDr, _ = f.drawingParser(drawingXML)
+	if ret, buf = f.getPictureFromWsDr(row, col, drawingRelationships, wsDr); len(buf) > 0 {
+		return
+	}
+	deWsDr = new(decodeWsDr)
+	if err = f.xmlNewDecoder(bytes.NewReader(namespaceStrictToTransitional(f.readXML(drawingXML)))).
+		Decode(deWsDr); err != nil && err != io.EOF {
+		err = fmt.Errorf("xml decode error: %s", err)
+		return
+	}
+	err = nil
+	for _, anchor := range deWsDr.TwoCellAnchor {
+		deTwoCellAnchor = new(decodeTwoCellAnchor)
+		if err = f.xmlNewDecoder(strings.NewReader("<decodeTwoCellAnchor>" + anchor.Content + "</decodeTwoCellAnchor>")).
+			Decode(deTwoCellAnchor); err != nil && err != io.EOF {
+			err = fmt.Errorf("xml decode error: %s", err)
+			return
+		}
+		if err = nil; deTwoCellAnchor.From != nil && deTwoCellAnchor.Pic != nil {
+			if deTwoCellAnchor.From.Col == col && deTwoCellAnchor.From.Row == row {
+				drawRel = f.getDrawingRelationships(drawingRelationships, deTwoCellAnchor.Pic.BlipFill.Blip.Embed)
+				if _, ok = supportImageTypes[filepath.Ext(drawRel.Target)]; ok {
+					ret, buf = filepath.Base(drawRel.Target), f.XLSX[strings.Replace(drawRel.Target, "..", "xl", -1)]
+					img := &ImageData{
+						Name: ret,
+						Data: buf,
+					}
+					images = append(images, img)
+					//return
 				}
 			}
 		}
