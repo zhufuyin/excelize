@@ -321,9 +321,9 @@ func TestSetCellHyperLink(t *testing.T) {
 		t.Log(err)
 	}
 	// Test set cell hyperlink in a work sheet already have hyperlinks.
-	assert.NoError(t, f.SetCellHyperLink("Sheet1", "B19", "https://github.com/360EntSecGroup-Skylar/excelize", "External"))
+	assert.NoError(t, f.SetCellHyperLink("Sheet1", "B19", "https://github.com/zhufuyin/excelize", "External"))
 	// Test add first hyperlink in a work sheet.
-	assert.NoError(t, f.SetCellHyperLink("Sheet2", "C1", "https://github.com/360EntSecGroup-Skylar/excelize", "External"))
+	assert.NoError(t, f.SetCellHyperLink("Sheet2", "C1", "https://github.com/zhufuyin/excelize", "External"))
 	// Test add Location hyperlink in a work sheet.
 	assert.NoError(t, f.SetCellHyperLink("Sheet2", "D6", "Sheet1!D8", "Location"))
 
@@ -337,13 +337,13 @@ func TestSetCellHyperLink(t *testing.T) {
 	_, err = f.workSheetReader("Sheet1")
 	assert.NoError(t, err)
 	f.Sheet["xl/worksheets/sheet1.xml"].Hyperlinks = &xlsxHyperlinks{Hyperlink: make([]xlsxHyperlink, 65530)}
-	assert.EqualError(t, f.SetCellHyperLink("Sheet1", "A65531", "https://github.com/360EntSecGroup-Skylar/excelize", "External"), "over maximum limit hyperlinks in a worksheet")
+	assert.EqualError(t, f.SetCellHyperLink("Sheet1", "A65531", "https://github.com/zhufuyin/excelize", "External"), "over maximum limit hyperlinks in a worksheet")
 
 	f = NewFile()
 	_, err = f.workSheetReader("Sheet1")
 	assert.NoError(t, err)
 	f.Sheet["xl/worksheets/sheet1.xml"].MergeCells = &xlsxMergeCells{Cells: []*xlsxMergeCell{{Ref: "A:A"}}}
-	err = f.SetCellHyperLink("Sheet1", "A1", "https://github.com/360EntSecGroup-Skylar/excelize", "External")
+	err = f.SetCellHyperLink("Sheet1", "A1", "https://github.com/zhufuyin/excelize", "External")
 	assert.EqualError(t, err, `cannot convert cell "A" to coordinates: invalid cell name "A"`)
 }
 
@@ -1260,7 +1260,7 @@ func prepareTestBook1() (*File, error) {
 
 	// Test add picture to worksheet with offset, external hyperlink and positioning.
 	err = f.AddPicture("Sheet1", "F21", filepath.Join("test", "images", "excel.png"),
-		`{"x_offset": 10, "y_offset": 10, "hyperlink": "https://github.com/360EntSecGroup-Skylar/excelize", "hyperlink_type": "External", "positioning": "oneCell"}`)
+		`{"x_offset": 10, "y_offset": 10, "hyperlink": "https://github.com/zhufuyin/excelize", "hyperlink_type": "External", "positioning": "oneCell"}`)
 	if err != nil {
 		return nil, err
 	}
